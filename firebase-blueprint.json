@@ -1,0 +1,252 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with social metrics and metadata",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "bio": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "followersCount": { "type": "integer" },
+        "followingCount": { "type": "integer" },
+        "postsCount": { "type": "integer" },
+        "reelsCount": { "type": "integer" },
+        "isOnline": { "type": "boolean" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["username", "displayName"]
+    },
+    "UsernameRecord": {
+      "title": "UsernameRecord",
+      "description": "Unique username registry document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Feed post, reel, or repost with social counters",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorUsername": { "type": "string" },
+        "authorDisplayName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string" },
+        "type": { "type": "string", "enum": ["post", "reel"] },
+        "caption": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "likesCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" },
+        "repostsCount": { "type": "integer" },
+        "sharesCount": { "type": "integer" },
+        "savesCount": { "type": "integer" },
+        "hashtags": { "type": "array" },
+        "mentions": { "type": "array" },
+        "isRepost": { "type": "boolean" },
+        "originalPostId": { "type": "string" },
+        "originalAuthorId": { "type": "string" },
+        "originalAuthorUsername": { "type": "string" },
+        "repostComment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorUsername", "type", "createdAt"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Ephemeral 24-hour social story",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorUsername": { "type": "string" },
+        "authorDisplayName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "caption": { "type": "string" },
+        "mentions": { "type": "array" },
+        "viewers": { "type": "array" },
+        "likesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorUsername", "mediaUrl", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "Interaction like on posts, reels, stories, comments or reposts",
+      "type": "object",
+      "properties": {
+        "targetType": { "type": "string", "enum": ["post", "reel", "repost", "story", "comment"] },
+        "targetId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userUsername": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetType", "targetId", "userId", "createdAt"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "Follow relationship between two users",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "followingId", "createdAt"]
+    },
+    "Save": {
+      "title": "Save",
+      "description": "Saved post or reel bookmark",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "postId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "postId", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Comment or nested reply under a post or reel",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorUsername": { "type": "string" },
+        "authorDisplayName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string" },
+        "text": { "type": "string" },
+        "parentCommentId": { "type": "string" },
+        "replyToUsername": { "type": "string" },
+        "likesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "authorId", "authorUsername", "text", "createdAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Direct message conversation channel between users",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array" },
+        "participantUsernames": { "type": "array" },
+        "participantNames": { "type": "array" },
+        "participantPhotos": { "type": "array" },
+        "lastMessage": { "type": "string" },
+        "lastMessageSenderId": { "type": "string" },
+        "lastMessageTimestamp": { "type": "string", "format": "date-time" },
+        "typingUserIds": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["participantIds", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat message inside a conversation",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderUsername": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "text": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "sharedPostId": { "type": "string" },
+        "sharedPostPreview": { "type": "string" },
+        "reaction": { "type": "string" },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "senderId", "recipientId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time notification for likes, comments, follows, mentions, and reposts",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorUsername": { "type": "string" },
+        "actorPhotoUrl": { "type": "string" },
+        "type": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetPreview": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientId", "actorId", "actorUsername", "type", "createdAt"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "User online presence and live status",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "isOnline": { "type": "boolean" },
+        "lastSeen": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "isOnline"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile collection"
+    },
+    "/usernames/{username}": {
+      "schema": { "$ref": "#/entities/UsernameRecord" },
+      "description": "Global unique username registry"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Posts and reels collection"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Comments and replies on posts"
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/Story" },
+      "description": "Stories collection"
+    },
+    "/likes/{likeId}": {
+      "schema": { "$ref": "#/entities/Like" },
+      "description": "Likes on posts, reels, comments, and stories"
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/Follow" },
+      "description": "Follow graph"
+    },
+    "/saves/{saveId}": {
+      "schema": { "$ref": "#/entities/Save" },
+      "description": "Saved posts"
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "DM chat channels"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages inside DM channels"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Notifications feed"
+    },
+    "/presence/{userId}": {
+      "schema": { "$ref": "#/entities/Presence" },
+      "description": "Live presence status"
+    }
+  }
+}

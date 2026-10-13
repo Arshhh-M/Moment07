@@ -1,0 +1,329 @@
+package com.example.ui.messages
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.data.model.ChatMessage
+import com.example.data.model.UserProfile
+import com.example.ui.components.formatTimestamp
+import com.example.ui.theme.OnlineGreen
+import com.example.ui.theme.PrimaryViolet
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatDetailScreen(
+    conversationId: String,
+    recipient: UserProfile,
+    currentUser: UserProfile,
+    messages: List<ChatMessage>,
+    isRecipientTyping: Boolean,
+    onBack: () -> Unit,
+    onSendMessage: (text: String) -> Unit,
+    onTypingChanged: (isTyping: Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onBack)
+
+    var messageText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Scroll to bottom on new message
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    // Typing debounce
+    LaunchedEffect(messageText) {
+        if (messageText.isNotBlank()) {
+            onTypingChanged(true)
+            delay(2500)
+            onTypingChanged(false)
+        } else {
+            onTypingChanged(false)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onTypingChanged(false)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(40.dp)) {
+                            val photo = if (recipient.photoUrl.isNotBlank()) recipient.photoUrl
+                            else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
+
+                            AsyncImage(
+                                model = photo,
+                                contentDescription = recipient.username,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(OnlineGreen)
+                                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                    .align(Alignment.BottomEnd)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column {
+                            Text(
+                                text = recipient.displayName.ifBlank { recipient.username },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isRecipientTyping) {
+                                Text(
+                                    text = "Typing...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            } else {
+                                Text(
+                                    text = "@${recipient.username} • Active now",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack, modifier = Modifier.testTag("chat_back_button")) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Messages list
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(messages, key = { it.id }) { msg ->
+                    val isMine = msg.senderId == currentUser.id
+                    MessageBubble(
+                        message = msg,
+                        isMine = isMine
+                    )
+                }
+
+                if (isRecipientTyping) {
+                    item {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "@${recipient.username} is typing...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Input Bar
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = messageText,
+                        onValueChange = { messageText = it },
+                        placeholder = { Text("Message...") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("chat_message_input"),
+                        shape = RoundedCornerShape(24.dp),
+                        maxLines = 4
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = {
+                            if (messageText.isNotBlank()) {
+                                onSendMessage(messageText.trim())
+                                messageText = ""
+                                onTypingChanged(false)
+                            }
+                        },
+                        enabled = messageText.isNotBlank(),
+                        modifier = Modifier.testTag("send_message_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (messageText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageBubble(
+    message: ChatMessage,
+    isMine: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
+    ) {
+        Surface(
+            color = if (isMine) PrimaryViolet else MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = if (isMine) 18.dp else 4.dp,
+                bottomEnd = if (isMine) 4.dp else 18.dp
+            ),
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .testTag("message_bubble_${message.id}")
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                // If message is a shared post preview
+                if (message.sharedPostId != null) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 6.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(6.dp)) {
+                            if (!message.sharedPostPreview.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = message.sharedPostPreview,
+                                    contentDescription = "Shared Content",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(130.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Shared SocialX Content",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMine) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                if (message.text.isNotBlank()) {
+                    Text(
+                        text = message.text,
+                        color = if (isMine) Color.White else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatTimestamp(message.createdAt?.toDate()),
+                        color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        fontSize = 10.sp
+                    )
+                    if (isMine) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = if (message.status == "read") Icons.Default.DoneAll else Icons.Default.Check,
+                            contentDescription = message.status,
+                            tint = if (message.status == "read") Color(0xFF67E8F9) else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
