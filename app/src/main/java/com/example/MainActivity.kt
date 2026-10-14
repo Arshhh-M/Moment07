@@ -50,7 +50,10 @@ fun SocialXRoot() {
                     ?: error("Application missing")
                 val databaseId = app.getString(R.string.firestore_database_id)
                 val firestore = FirebaseFirestore.getInstance(databaseId)
-                AuthViewModel(SocialRepository(firestore))
+                AuthViewModel(
+                    repository = SocialRepository(firestore),
+                    context = app.applicationContext
+                )
             }
         }
     )

@@ -55,6 +55,7 @@ fun SocialApp(
     val feedPosts by viewModel.feedPosts.collectAsState()
     val reels by viewModel.reels.collectAsState()
     val stories by viewModel.stories.collectAsState()
+    val notes by viewModel.notes.collectAsState()
     val userLikes by viewModel.userLikes.collectAsState()
     val userSaves by viewModel.userSaves.collectAsState()
     val followingIds by viewModel.followingIds.collectAsState()
@@ -188,6 +189,7 @@ fun SocialApp(
                     HomeScreen(
                         posts = feedPosts,
                         stories = stories,
+                        notes = notes,
                         currentUser = profile,
                         userLikes = userLikes,
                         userSaves = userSaves,
@@ -209,6 +211,10 @@ fun SocialApp(
                             activeViewingStory = story
                             viewModel.viewStory(story.id)
                         },
+                        onSaveNote = { text, song ->
+                            viewModel.saveNote(text, song?.title ?: "", song?.artist ?: "", song?.coverUrl ?: "")
+                        },
+                        onDeleteNote = { viewModel.deleteNote() },
                         onSharePostToDm = { post -> sharingPostToDm = post },
                         onOpenMessages = { currentNavScreen = NavScreen.MESSAGES },
                         onOpenNotifications = { currentNavScreen = NavScreen.NOTIFICATIONS },
@@ -261,6 +267,11 @@ fun SocialApp(
                         conversations = conversations,
                         allUsers = allUsers,
                         currentUser = profile,
+                        notes = notes,
+                        onSaveNote = { text, song ->
+                            viewModel.saveNote(text, song?.title ?: "", song?.artist ?: "", song?.coverUrl ?: "")
+                        },
+                        onDeleteNote = { viewModel.deleteNote() },
                         onOpenConversation = { convId, otherUser ->
                             activeChatConversationId = convId
                             activeChatRecipient = otherUser

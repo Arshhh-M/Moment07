@@ -26,7 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Comment
 import com.example.data.model.Post
+import com.example.data.model.Song
 import com.example.data.model.Story
+import com.example.data.model.UserNote
 import com.example.data.model.UserProfile
 import com.example.ui.components.*
 import com.example.ui.theme.PrimaryViolet
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 fun HomeScreen(
     posts: List<Post>,
     stories: List<Story>,
+    notes: List<UserNote> = emptyList(),
     currentUser: UserProfile,
     userLikes: Set<String>,
     userSaves: Set<String>,
@@ -53,6 +56,8 @@ fun HomeScreen(
     onDeleteComment: (postId: String, commentId: String) -> Unit,
     onAddStoryClick: () -> Unit,
     onStoryClick: (Story) -> Unit,
+    onSaveNote: (text: String, song: Song?) -> Unit = { _, _ -> },
+    onDeleteNote: () -> Unit = {},
     onSharePostToDm: (Post) -> Unit,
     onOpenMessages: () -> Unit,
     onOpenNotifications: () -> Unit,
@@ -161,6 +166,17 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Notes Bar (Status bubbles with 1M+ music library)
+            item {
+                NotesBar(
+                    currentUser = currentUser,
+                    notes = notes,
+                    onSaveNote = onSaveNote,
+                    onDeleteNote = onDeleteNote
+                )
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            }
+
             // Stories Row
             item {
                 StoryBar(

@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import android.util.Log
 import com.example.R
+import com.example.data.crypto.E2EEncryptionHelper
 import com.example.data.model.*
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.*
@@ -97,6 +98,19 @@ class SocialRepository(private val db: FirebaseFirestore) {
         } catch (e: Exception) {
             Log.e(TAG, "Error checking username", e)
             false
+        }
+    }
+
+    suspend fun getUserByUsername(username: String): UserProfile? {
+        val clean = username.trim().lowercase().removePrefix("@")
+        if (clean.isBlank()) return null
+        return try {
+            val recordDoc = db.collection("usernames").document(clean).get().await()
+            val userId = recordDoc.getString("userId") ?: return null
+            getUserProfile(userId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding user by username @$clean", e)
+            null
         }
     }
 
@@ -650,10 +664,20 @@ class SocialRepository(private val db: FirebaseFirestore) {
                     Log.w(TAG, "Error observing messages for $conversationId", error)
                     return@addSnapshotListener
                 }
-                val messages = snapshot?.toObjects(ChatMessage::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                val rawMessages = snapshot?.toObjects(ChatMessage::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
                     ?.sortedBy { it.createdAt ?: Timestamp(0, 0) }
                     ?: emptyList()
-                trySend(messages)
+                val decryptedMessages = rawMessages.map { msg ->
+                    if (E2EEncryptionHelper.isMessageEncrypted(msg.text)) {
+                        msg.copy(
+                            text = E2EEncryptionHelper.decrypt(msg.text, conversationId),
+                            isEncrypted = true
+                        )
+                    } else {
+                        msg.copy(isEncrypted = false)
+                    }
+                }
+                trySend(decryptedMessages)
             }
         awaitClose { listener.remove() }
     }
@@ -669,15 +693,17 @@ class SocialRepository(private val db: FirebaseFirestore) {
         return try {
             val convRef = db.collection("conversations").document(conversationId)
             val msgRef = convRef.collection("messages").document()
+            val cipherText = E2EEncryptionHelper.encrypt(text.trim(), conversationId)
             val msg = ChatMessage(
                 conversationId = conversationId,
                 senderId = sender.id,
                 senderUsername = sender.username,
                 recipientId = recipientId,
-                text = text.trim(),
+                text = cipherText,
                 sharedPostId = sharedPostId,
                 sharedPostPreview = sharedPostPreview,
-                status = "sent"
+                status = "sent",
+                isEncrypted = true
             )
             msgRef.set(msg).await()
 
@@ -827,6 +853,45 @@ class SocialRepository(private val db: FirebaseFirestore) {
             } catch (e: Exception) {
                 Log.w(TAG, "Error notifying mention @$username", e)
             }
+        }
+    }
+
+    // ==========================================
+    // USER NOTES (Instagram-style Notes with Music)
+    // ==========================================
+
+    fun observeNotes(): Flow<List<UserNote>> = callbackFlow {
+        val listener = db.collection("notes")
+            .limit(30)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w(TAG, "Error observing notes", error)
+                    return@addSnapshotListener
+                }
+                val notes = snapshot?.toObjects(UserNote::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    ?.sortedByDescending { it.createdAt ?: Timestamp(0, 0) }
+                    ?: emptyList()
+                trySend(notes)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun saveNote(note: UserNote): Boolean {
+        return try {
+            db.collection("notes").document(note.userId).set(note).await()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save note", e)
+            false
+        }
+    }
+
+    suspend fun deleteNote(userId: String): Boolean {
+        return try {
+            db.collection("notes").document(userId).delete().await()
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }

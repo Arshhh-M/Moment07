@@ -27,6 +27,10 @@ class SocialViewModel(
     val stories: StateFlow<List<Story>> = repository.observeStories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Notes (Instagram-style status notes with songs)
+    val notes: StateFlow<List<UserNote>> = repository.observeNotes()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Social graph & interactions
     val userLikes: StateFlow<Set<String>> = repository.observeUserLikes(currentUserId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
@@ -246,5 +250,29 @@ class SocialViewModel(
     suspend fun getOrCreateConversationId(otherUser: UserProfile): String {
         val user = currentUserProfile.value ?: return ""
         return repository.getOrCreateConversation(user, otherUser)
+    }
+
+    fun saveNote(text: String, songTitle: String = "", songArtist: String = "", songCoverUrl: String = "") {
+        val user = currentUserProfile.value ?: return
+        viewModelScope.launch {
+            val note = UserNote(
+                id = user.id,
+                userId = user.id,
+                username = user.username,
+                displayName = user.displayName,
+                userPhotoUrl = user.photoUrl,
+                text = text.trim(),
+                songTitle = songTitle,
+                songArtist = songArtist,
+                songCoverUrl = songCoverUrl
+            )
+            repository.saveNote(note)
+        }
+    }
+
+    fun deleteNote() {
+        viewModelScope.launch {
+            repository.deleteNote(currentUserId)
+        }
     }
 }

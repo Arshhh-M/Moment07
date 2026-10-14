@@ -18,6 +18,8 @@ data class UserProfile(
     val postsCount: Long = 0L,
     val reelsCount: Long = 0L,
     val isOnline: Boolean = false,
+    val passwordHash: String = "",
+    val passwordSalt: String = "",
     @ServerTimestamp val lastActive: Timestamp? = null,
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
@@ -53,6 +55,9 @@ data class Post(
     val originalAuthorId: String? = null,
     val originalAuthorUsername: String? = null,
     val repostComment: String? = null,
+    val songTitle: String = "",
+    val songArtist: String = "",
+    val songCoverUrl: String = "",
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
 )
@@ -67,6 +72,9 @@ data class Story(
     val mediaUrl: String = "",
     val mediaType: String = "image", // "image" or "video"
     val caption: String = "",
+    val songTitle: String = "",
+    val songArtist: String = "",
+    val songCoverUrl: String = "",
     val mentions: List<String> = emptyList(),
     val viewers: List<String> = emptyList(),
     val likesCount: Long = 0L,
@@ -142,6 +150,7 @@ data class ChatMessage(
     val sharedPostPreview: String? = null,
     val reaction: String? = null,
     val status: String = "sent", // "sent", "delivered", "read"
+    val isEncrypted: Boolean = true,
     @ServerTimestamp val createdAt: Timestamp? = null
 )
 
@@ -152,7 +161,7 @@ data class SocialNotification(
     val actorId: String = "",
     val actorUsername: String = "",
     val actorPhotoUrl: String = "",
-    val type: String = "", // "like_post", "like_reel", "like_repost", "like_story", "comment", "reply", "repost_post", "repost_reel", "follow", "mention_post", "mention_reel", "mention_story", "story_reply", "share"
+    val type: String = "",
     val targetId: String = "",
     val targetPreview: String = "",
     val isRead: Boolean = false,
@@ -164,4 +173,29 @@ data class UserPresence(
     @DocumentId val userId: String = "",
     val isOnline: Boolean = false,
     @ServerTimestamp val lastSeen: Timestamp? = null
+)
+
+@IgnoreExtraProperties
+data class UserNote(
+    @DocumentId val id: String = "",
+    val userId: String = "",
+    val username: String = "",
+    val displayName: String = "",
+    val userPhotoUrl: String = "",
+    val text: String = "",
+    val songTitle: String = "",
+    val songArtist: String = "",
+    val songCoverUrl: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null
+)
+
+data class Song(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val coverUrl: String,
+    val durationSeconds: Int = 180,
+    val genre: String = "Pop",
+    val audioUrl: String = ""
 )

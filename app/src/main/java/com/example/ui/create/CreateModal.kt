@@ -22,8 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Post
+import com.example.data.model.Song
 import com.example.data.model.Story
 import com.example.data.model.UserProfile
+import com.example.ui.components.SongPickerModal
+import com.example.ui.theme.PrimaryViolet
 import com.example.ui.theme.SecondaryPink
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +40,8 @@ fun CreateModal(
     var selectedType by remember { mutableStateOf("post") } // "post", "reel", "story"
     var caption by remember { mutableStateOf("") }
     var customMediaUrl by remember { mutableStateOf("") }
+    var selectedSong by remember { mutableStateOf<Song?>(null) }
+    var isPickingSong by remember { mutableStateOf(false) }
 
     val presetImages = listOf(
         "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&fit=crop", // abstract violet

@@ -24,9 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Conversation
+import com.example.data.model.Song
+import com.example.data.model.UserNote
 import com.example.data.model.UserProfile
+import com.example.ui.components.NotesBar
 import com.example.ui.components.formatTimestamp
 import com.example.ui.theme.OnlineGreen
+import com.example.ui.theme.PrimaryViolet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +38,9 @@ fun MessagesScreen(
     conversations: List<Conversation>,
     allUsers: List<UserProfile>,
     currentUser: UserProfile,
+    notes: List<UserNote> = emptyList(),
+    onSaveNote: (text: String, song: Song?) -> Unit = { _, _ -> },
+    onDeleteNote: () -> Unit = {},
     onOpenConversation: (conversationId: String, otherUser: UserProfile) -> Unit,
     onStartNewChat: (otherUser: UserProfile) -> Unit,
     modifier: Modifier = Modifier
@@ -91,11 +98,46 @@ fun MessagesScreen(
                 leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
                     .testTag("messages_search_input"),
                 shape = RoundedCornerShape(16.dp),
                 singleLine = true
             )
+
+            // Instagram-style Notes Bar in Messages
+            NotesBar(
+                currentUser = currentUser,
+                notes = notes,
+                onSaveNote = onSaveNote,
+                onDeleteNote = onDeleteNote
+            )
+
+            // End-to-End Encryption Security Banner
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Encrypted",
+                        tint = PrimaryViolet,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "End-to-End Encrypted • Chats are cryptographically secured",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             if (filteredConversations.isEmpty()) {
                 Box(

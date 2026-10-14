@@ -256,6 +256,34 @@ fun StoryViewerDialog(
                         Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
                 }
+
+                // Music audio sticker if story has song attached
+                if (story.songTitle.isNotBlank()) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.55f),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = "Song",
+                                tint = SecondaryPink,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${story.songTitle} • ${story.songArtist}",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
 
             // Caption overlay if exists

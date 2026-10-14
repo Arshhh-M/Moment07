@@ -314,18 +314,27 @@ fun ReelsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.MusicNote,
                                 contentDescription = "Audio",
-                                tint = Color.White.copy(alpha = 0.8f),
-                                modifier = Modifier.size(14.dp)
+                                tint = SecondaryPink,
+                                modifier = Modifier.size(15.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            val songName = if (reel.songTitle.isNotBlank()) "${reel.songTitle} • ${reel.songArtist}"
+                            else "Original Audio • @${reel.authorUsername}"
                             Text(
-                                text = "Original Audio • ${reel.authorUsername}",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 11.sp
+                                text = songName,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
                         }
                     }

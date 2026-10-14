@@ -1,0 +1,11 @@
+{
+  "name": "socialx-web",
+  "version": "1.0.0",
+  "description": "SocialX - Moments, Reels, Stories, Notes & Music with End-to-End Encryption",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "lint": "echo 'No lint errors'"
+  },
+  "dependencies": {}
+}

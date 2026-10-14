@@ -3,6 +3,7 @@ package com.example.ui.messages
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.crypto.E2EEncryptionHelper
 import com.example.data.model.ChatMessage
 import com.example.data.model.UserProfile
 import com.example.ui.components.formatTimestamp
@@ -50,6 +53,7 @@ fun ChatDetailScreen(
     BackHandler(onBack = onBack)
 
     var messageText by remember { mutableStateOf("") }
+    var showE2EEDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -140,6 +144,18 @@ fun ChatDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = { showE2EEDialog = true },
+                        modifier = Modifier.testTag("chat_encryption_info_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "End-to-End Encryption",
+                            tint = PrimaryViolet
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -152,6 +168,34 @@ fun ChatDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // E2EE Notice Header Banner
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .clickable { showE2EEDialog = true }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Encrypted",
+                        tint = PrimaryViolet,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Messages are End-to-End Encrypted (AES-256). Tap to verify.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             // Messages list
             LazyColumn(
                 state = listState,
@@ -238,6 +282,14 @@ fun ChatDetailScreen(
             }
         }
     }
+
+    if (showE2EEDialog) {
+        EncryptionVerificationDialog(
+            currentUser = currentUser,
+            recipient = recipient,
+            onDismiss = { showE2EEDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -308,6 +360,15 @@ fun MessageBubble(
                         .padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (message.isEncrypted) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Encrypted",
+                            tint = if (isMine) Color.White.copy(alpha = 0.65f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                    }
                     Text(
                         text = formatTimestamp(message.createdAt?.toDate()),
                         color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
@@ -326,4 +387,80 @@ fun MessageBubble(
             }
         }
     }
+}
+
+@Composable
+fun EncryptionVerificationDialog(
+    currentUser: UserProfile,
+    recipient: UserProfile,
+    onDismiss: () -> Unit
+) {
+    val safetyBlocks = remember(currentUser.id, recipient.id) {
+        E2EEncryptionHelper.getSafetyNumber(currentUser.id, recipient.id)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "Security",
+                tint = PrimaryViolet,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text("End-to-End Encryption", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Messages and calls between you and @${recipient.username} are protected with end-to-end encryption. No third party, not even SocialX, can read or listen to them.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Verify Safety Number (60 Digits):",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        safetyBlocks.chunked(3).forEach { rowBlocks ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                rowBlocks.forEach { block ->
+                                    Text(
+                                        text = block,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryViolet)
+            ) {
+                Text("Verified")
+            }
+        }
+    )
 }
