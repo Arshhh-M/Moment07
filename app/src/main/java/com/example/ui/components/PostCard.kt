@@ -22,8 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.example.data.audio.AudioPlayerManager
 import com.example.data.model.Post
+import com.example.data.model.Song
 import com.example.data.model.UserProfile
 import com.example.ui.theme.LikeRed
 import com.example.ui.theme.RepostGreen
@@ -45,6 +48,11 @@ fun PostCard(
     onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val currentPlayingSong by AudioPlayerManager.currentPlayingSong.collectAsState()
+    val isPlaying by AudioPlayerManager.isPlaying.collectAsState()
+    val isThisPostPlaying = isPlaying && currentPlayingSong?.title == post.songTitle
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -201,24 +209,36 @@ fun PostCard(
             // Attached Song Badge
             if (post.songTitle.isNotBlank()) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    color = if (isThisPostPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clickable {
+                            AudioPlayerManager.playSong(
+                                context,
+                                Song(
+                                    id = "post_${post.id}",
+                                    title = post.songTitle,
+                                    artist = post.songArtist,
+                                    coverUrl = post.songCoverUrl.ifBlank { post.mediaUrl },
+                                    audioUrl = ""
+                                )
+                            )
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.MusicNote,
+                            imageVector = if (isThisPostPlaying) Icons.Default.Pause else Icons.Default.MusicNote,
                             contentDescription = "Song",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = if (isThisPostPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${post.songTitle} • ${post.songArtist}",
+                            text = if (isThisPostPlaying) "▶ Playing: ${post.songTitle} • ${post.songArtist}" else "${post.songTitle} • ${post.songArtist}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,

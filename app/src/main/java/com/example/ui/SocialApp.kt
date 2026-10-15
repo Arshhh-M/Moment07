@@ -40,6 +40,7 @@ enum class NavScreen(val label: String, val selectedIcon: ImageVector, val unsel
 @Composable
 fun SocialApp(
     viewModel: SocialViewModel,
+    authViewModel: com.example.ui.auth.AuthViewModel? = null,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -102,11 +103,14 @@ fun SocialApp(
         val targetUser = allUsers.find { it.id == inspectedUserId } ?: UserProfile(id = inspectedUserId!!)
         val targetUserPosts = feedPosts.filter { it.authorId == inspectedUserId }
 
+        val targetHighlights by viewModel.getHighlightsForUser(inspectedUserId!!).collectAsState()
+
         ProfileScreen(
             profileUser = targetUser,
             currentUser = profile,
             userPosts = targetUserPosts,
             savedPosts = emptyList(),
+            highlights = targetHighlights,
             isFollowing = followingIds.contains(inspectedUserId),
             onToggleFollow = { viewModel.toggleFollow(inspectedUserId!!) },
             onSendMessage = {
@@ -122,6 +126,16 @@ fun SocialApp(
             onUpdateProfile = { _, _, _ -> },
             onSignOut = onSignOut,
             onPostClick = {},
+            onViewHighlight = { hl ->
+                val firstStory = hl.stories.firstOrNull() ?: Story(
+                    authorId = targetUser.id,
+                    authorUsername = targetUser.username,
+                    authorPhotoUrl = targetUser.photoUrl,
+                    mediaUrl = hl.coverUrl,
+                    caption = hl.title
+                )
+                activeViewingStory = firstStory
+            },
             onBack = { inspectedUserId = null }
         )
         return
@@ -300,12 +314,16 @@ fun SocialApp(
                 NavScreen.PROFILE -> {
                     val myPosts = feedPosts.filter { it.authorId == profile.id }
                     val mySavedPosts = feedPosts.filter { userSaves.contains(it.id) }
+                    val myHighlights by viewModel.getHighlightsForUser(profile.id).collectAsState()
+                    val savedAccounts by (authViewModel?.savedAccounts ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList())).collectAsState()
 
                     ProfileScreen(
                         profileUser = profile,
                         currentUser = profile,
                         userPosts = myPosts,
                         savedPosts = mySavedPosts,
+                        highlights = myHighlights,
+                        savedAccounts = savedAccounts,
                         isFollowing = false,
                         onToggleFollow = {},
                         onSendMessage = {},
@@ -313,7 +331,26 @@ fun SocialApp(
                             viewModel.updateProfile(name, bio, photo)
                         },
                         onSignOut = onSignOut,
-                        onPostClick = {}
+                        onPostClick = {},
+                        onCreateHighlight = { title, cover ->
+                            viewModel.saveHighlight(title, cover, emptyList())
+                        },
+                        onViewHighlight = { hl ->
+                            val firstStory = hl.stories.firstOrNull() ?: Story(
+                                authorId = profile.id,
+                                authorUsername = profile.username,
+                                authorPhotoUrl = profile.photoUrl,
+                                mediaUrl = hl.coverUrl,
+                                caption = hl.title
+                            )
+                            activeViewingStory = firstStory
+                        },
+                        onSwitchAccount = { targetUserId ->
+                            authViewModel?.switchAccount(targetUserId)
+                        },
+                        onAddNewAccount = {
+                            authViewModel?.promptAddNewAccount()
+                        }
                     )
                 }
             }
@@ -348,7 +385,10 @@ fun SocialApp(
             currentUser = profile,
             onDismiss = { activeViewingStory = null },
             onLikeStory = { viewModel.likeStory(viewingStory) },
-            onReplyStory = { reply -> viewModel.replyToStory(viewingStory, reply) }
+            onReplyStory = { reply -> viewModel.replyToStory(viewingStory, reply) },
+            onAddToHighlight = { story, name ->
+                viewModel.saveHighlight(name, story.mediaUrl, listOf(story.id))
+            }
         )
     }
 

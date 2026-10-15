@@ -275,4 +275,36 @@ class SocialViewModel(
             repository.deleteNote(currentUserId)
         }
     }
+
+    // Story Highlights
+    private val highlightsFlowMap = mutableMapOf<String, StateFlow<List<StoryHighlight>>>()
+
+    fun getHighlightsForUser(userId: String): StateFlow<List<StoryHighlight>> {
+        return highlightsFlowMap.getOrPut(userId) {
+            repository.observeHighlights(userId)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }
+    }
+
+    fun saveHighlight(title: String, coverUrl: String, storyIds: List<String>, highlightId: String = "") {
+        viewModelScope.launch {
+            val user = currentUserProfile.value ?: return@launch
+            val matchingStories = stories.value.filter { storyIds.contains(it.id) }
+            val highlight = StoryHighlight(
+                id = highlightId,
+                userId = user.id,
+                title = title.trim(),
+                coverUrl = coverUrl.ifBlank { matchingStories.firstOrNull()?.mediaUrl ?: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&fit=crop" },
+                storyIds = storyIds,
+                stories = matchingStories
+            )
+            repository.saveHighlight(highlight)
+        }
+    }
+
+    fun deleteHighlight(highlightId: String) {
+        viewModelScope.launch {
+            repository.deleteHighlight(currentUserId, highlightId)
+        }
+    }
 }

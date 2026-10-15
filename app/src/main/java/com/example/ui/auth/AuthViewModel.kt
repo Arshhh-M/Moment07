@@ -31,10 +31,14 @@ class AuthViewModel(
         private const val TAG = "AuthViewModel"
         private const val PREFS_NAME = "socialx_auth_session"
         private const val KEY_USER_ID = "saved_user_id"
+        private const val KEY_SAVED_ACCOUNTS = "saved_accounts_ids"
     }
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Loading)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private val _savedAccounts = MutableStateFlow<List<UserProfile>>(emptyList())
+    val savedAccounts: StateFlow<List<UserProfile>> = _savedAccounts.asStateFlow()
 
     private val _usernameError = MutableStateFlow<String?>(null)
     val usernameError: StateFlow<String?> = _usernameError.asStateFlow()
@@ -51,12 +55,15 @@ class AuthViewModel(
 
     private fun checkCurrentAuth() {
         viewModelScope.launch {
+            loadSavedAccounts()
+
             // First check Firebase Auth
             val firebaseUser = auth.currentUser
             if (firebaseUser != null) {
                 val profile = repository.getUserProfile(firebaseUser.uid)
                 if (profile != null && profile.username.isNotBlank()) {
                     saveSessionUserId(profile.id)
+                    addToSavedAccounts(profile.id)
                     repository.updatePresence(profile.id, true)
                     _uiState.value = AuthUiState.Authenticated(profile)
                     return@launch
@@ -68,6 +75,7 @@ class AuthViewModel(
             if (!savedUserId.isNullOrBlank()) {
                 val profile = repository.getUserProfile(savedUserId)
                 if (profile != null && profile.username.isNotBlank()) {
+                    addToSavedAccounts(profile.id)
                     repository.updatePresence(profile.id, true)
                     _uiState.value = AuthUiState.Authenticated(profile)
                     return@launch
@@ -133,6 +141,7 @@ class AuthViewModel(
                 }
 
                 saveSessionUserId(profile.id)
+                addToSavedAccounts(profile.id)
                 repository.updatePresence(profile.id, true)
                 _uiState.value = AuthUiState.Authenticated(profile)
             } catch (e: Exception) {
@@ -234,6 +243,7 @@ class AuthViewModel(
                 }
 
                 saveSessionUserId(newProfile.id)
+                addToSavedAccounts(newProfile.id)
                 repository.updatePresence(newProfile.id, true)
                 _uiState.value = AuthUiState.Authenticated(newProfile)
             } catch (e: Exception) {
@@ -243,6 +253,58 @@ class AuthViewModel(
                 _isLoading.value = false
             }
         }
+    }
+
+    private suspend fun loadSavedAccounts() {
+        try {
+            val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val accountsString = prefs?.getString(KEY_SAVED_ACCOUNTS, "") ?: ""
+            val userIds = accountsString.split(",").filter { it.isNotBlank() }
+            val profiles = mutableListOf<UserProfile>()
+            for (uid in userIds) {
+                val p = repository.getUserProfile(uid)
+                if (p != null) profiles.add(p)
+            }
+            _savedAccounts.value = profiles
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load saved accounts", e)
+        }
+    }
+
+    private fun addToSavedAccounts(userId: String) {
+        try {
+            val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) ?: return
+            val existing = prefs.getString(KEY_SAVED_ACCOUNTS, "") ?: ""
+            val list = existing.split(",").filter { it.isNotBlank() }.toMutableSet()
+            list.add(userId)
+            prefs.edit().putString(KEY_SAVED_ACCOUNTS, list.joinToString(",")).apply()
+            viewModelScope.launch {
+                loadSavedAccounts()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to add saved account", e)
+        }
+    }
+
+    fun switchAccount(targetUserId: String) {
+        val currentUserId = getSessionUserId()
+        viewModelScope.launch {
+            if (currentUserId != null) {
+                repository.updatePresence(currentUserId, false)
+            }
+            saveSessionUserId(targetUserId)
+            val profile = repository.getUserProfile(targetUserId)
+            if (profile != null) {
+                repository.updatePresence(profile.id, true)
+                _uiState.value = AuthUiState.Authenticated(profile)
+            } else {
+                _uiState.value = AuthUiState.Unauthenticated
+            }
+        }
+    }
+
+    fun promptAddNewAccount() {
+        _uiState.value = AuthUiState.Unauthenticated
     }
 
     private fun hashPassword(password: String, salt: String): String {
@@ -299,3 +361,4 @@ class AuthViewModel(
         _uiState.value = AuthUiState.Unauthenticated
     }
 }
+

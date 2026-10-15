@@ -25,8 +25,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.example.data.audio.AudioPlayerManager
+import com.example.data.model.Song
 import com.example.data.model.Story
 import com.example.data.model.UserProfile
 import com.example.ui.theme.*
@@ -154,14 +156,42 @@ fun StoryViewerDialog(
     currentUser: UserProfile,
     onDismiss: () -> Unit,
     onLikeStory: () -> Unit,
-    onReplyStory: (reply: String) -> Unit
+    onReplyStory: (reply: String) -> Unit,
+    onAddToHighlight: ((story: Story, name: String) -> Unit)? = null
 ) {
     var replyText by remember { mutableStateOf("") }
     var isLiked by remember { mutableStateOf(false) }
+    var showHighlightDialog by remember { mutableStateOf(false) }
+    var highlightName by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val currentPlayingSong by AudioPlayerManager.currentPlayingSong.collectAsState()
+    val isPlaying by AudioPlayerManager.isPlaying.collectAsState()
+
+    // Automatically play the story's music if attached
+    LaunchedEffect(story.id, story.songTitle) {
+        if (story.songTitle.isNotBlank()) {
+            AudioPlayerManager.playSong(
+                context,
+                Song(
+                    id = "story_${story.id}",
+                    title = story.songTitle,
+                    artist = story.songArtist,
+                    coverUrl = story.songCoverUrl.ifBlank { story.mediaUrl },
+                    audioUrl = ""
+                )
+            )
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            AudioPlayerManager.stop()
+        }
+    }
 
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        onDismissRequest = onDismiss
     ) {
         Box(
             modifier = Modifier
@@ -250,6 +280,37 @@ fun StoryViewerDialog(
                         }
                     }
 
+                    if (story.authorId == currentUser.id && onAddToHighlight != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = SecondaryPink,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.clickable {
+                                highlightName = story.caption.ifBlank { "Vibes ✨" }
+                                showHighlightDialog = true
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Highlight",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Highlight",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.width(8.dp))
 
                     IconButton(onClick = onDismiss) {
@@ -259,24 +320,38 @@ fun StoryViewerDialog(
 
                 // Music audio sticker if story has song attached
                 if (story.songTitle.isNotBlank()) {
+                    val isStoryPlaying = isPlaying && currentPlayingSong?.id == "story_${story.id}"
                     Surface(
-                        color = Color.Black.copy(alpha = 0.55f),
+                        color = if (isStoryPlaying) SecondaryPink.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.55f),
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clickable {
+                                AudioPlayerManager.playSong(
+                                    context,
+                                    Song(
+                                        id = "story_${story.id}",
+                                        title = story.songTitle,
+                                        artist = story.songArtist,
+                                        coverUrl = story.songCoverUrl.ifBlank { story.mediaUrl },
+                                        audioUrl = ""
+                                    )
+                                )
+                            }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MusicNote,
+                                imageVector = if (isStoryPlaying) Icons.Default.Pause else Icons.Default.MusicNote,
                                 contentDescription = "Song",
-                                tint = SecondaryPink,
+                                tint = Color.White,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "${story.songTitle} • ${story.songArtist}",
+                                text = if (isStoryPlaying) "▶ ${story.songTitle} • ${story.songArtist}" else "${story.songTitle} • ${story.songArtist}",
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
@@ -363,5 +438,49 @@ fun StoryViewerDialog(
                 }
             }
         }
+    }
+
+    if (showHighlightDialog) {
+        AlertDialog(
+            onDismissRequest = { showHighlightDialog = false },
+            title = { Text("Add Story to Highlights", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Enter a name for this Story Highlight:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = highlightName,
+                        onValueChange = { highlightName = it },
+                        label = { Text("Highlight Name *") },
+                        placeholder = { Text("e.g. Vibes ✨, Goa 🏖️, Memories ❤️") },
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (highlightName.isNotBlank()) {
+                            onAddToHighlight?.invoke(story, highlightName.trim())
+                            showHighlightDialog = false
+                        }
+                    },
+                    enabled = highlightName.isNotBlank(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add to Highlights")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHighlightDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

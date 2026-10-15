@@ -166,17 +166,6 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Notes Bar (Status bubbles with 1M+ music library)
-            item {
-                NotesBar(
-                    currentUser = currentUser,
-                    notes = notes,
-                    onSaveNote = onSaveNote,
-                    onDeleteNote = onDeleteNote
-                )
-                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-            }
-
             // Stories Row
             item {
                 StoryBar(

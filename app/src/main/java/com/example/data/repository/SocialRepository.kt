@@ -894,4 +894,46 @@ class SocialRepository(private val db: FirebaseFirestore) {
             false
         }
     }
+
+    // Story Highlights
+    fun observeHighlights(userId: String): Flow<List<StoryHighlight>> = callbackFlow {
+        val listener = db.collection("users").document(userId).collection("highlights")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w(TAG, "Highlights listen failed", error)
+                    return@addSnapshotListener
+                }
+                val highlights = snapshot?.toObjects(StoryHighlight::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    ?.sortedByDescending { it.createdAt ?: Timestamp(0, 0) }
+                    ?: emptyList()
+                trySend(highlights)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun saveHighlight(highlight: StoryHighlight): Boolean {
+        return try {
+            val docRef = if (highlight.id.isBlank()) {
+                db.collection("users").document(highlight.userId).collection("highlights").document()
+            } else {
+                db.collection("users").document(highlight.userId).collection("highlights").document(highlight.id)
+            }
+            val toSave = highlight.copy(id = docRef.id)
+            docRef.set(toSave).await()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save highlight", e)
+            false
+        }
+    }
+
+    suspend fun deleteHighlight(userId: String, highlightId: String): Boolean {
+        return try {
+            db.collection("users").document(userId).collection("highlights").document(highlightId).delete().await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
+

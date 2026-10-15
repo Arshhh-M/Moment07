@@ -24,9 +24,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.example.data.audio.AudioPlayerManager
 import com.example.data.model.Comment
 import com.example.data.model.Post
+import com.example.data.model.Song
 import com.example.data.model.UserProfile
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.RepostDialog
@@ -54,6 +57,10 @@ fun ReelsScreen(
     getCommentsFlow: (postId: String) -> StateFlow<List<Comment>>,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val currentPlayingSong by AudioPlayerManager.currentPlayingSong.collectAsState()
+    val isPlaying by AudioPlayerManager.isPlaying.collectAsState()
+
     var activeCommentPost by remember { mutableStateOf<Post?>(null) }
     var activeRepostPost by remember { mutableStateOf<Post?>(null) }
 
@@ -313,24 +320,39 @@ fun ReelsScreen(
                             )
                         }
 
+                        val isThisReelPlaying = isPlaying && currentPlayingSong?.id == "reel_${reel.id}"
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .background(if (isThisReelPlaying) SecondaryPink.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    val title = if (reel.songTitle.isNotBlank()) reel.songTitle else "Original Reel Audio"
+                                    val artist = if (reel.songArtist.isNotBlank()) reel.songArtist else "@${reel.authorUsername}"
+                                    AudioPlayerManager.playSong(
+                                        context,
+                                        Song(
+                                            id = "reel_${reel.id}",
+                                            title = title,
+                                            artist = artist,
+                                            coverUrl = reel.songCoverUrl.ifBlank { reel.mediaUrl },
+                                            audioUrl = ""
+                                        )
+                                    )
+                                }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MusicNote,
+                                imageVector = if (isThisReelPlaying) Icons.Default.Pause else Icons.Default.MusicNote,
                                 contentDescription = "Audio",
-                                tint = SecondaryPink,
+                                tint = if (isThisReelPlaying) Color.White else SecondaryPink,
                                 modifier = Modifier.size(15.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             val songName = if (reel.songTitle.isNotBlank()) "${reel.songTitle} • ${reel.songArtist}"
                             else "Original Audio • @${reel.authorUsername}"
                             Text(
-                                text = songName,
+                                text = if (isThisReelPlaying) "▶ $songName" else songName,
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,

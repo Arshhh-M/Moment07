@@ -199,3 +199,15 @@ data class Song(
     val genre: String = "Pop",
     val audioUrl: String = ""
 )
+
+@IgnoreExtraProperties
+data class StoryHighlight(
+    @DocumentId val id: String = "",
+    val userId: String = "",
+    val title: String = "",
+    val coverUrl: String = "",
+    val storyIds: List<String> = emptyList(),
+    val stories: List<Story> = emptyList(),
+    @ServerTimestamp val createdAt: Timestamp? = null
+)
+

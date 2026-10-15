@@ -80,6 +80,7 @@ fun SocialXRoot() {
 
             SocialApp(
                 viewModel = socialViewModel,
+                authViewModel = authViewModel,
                 onSignOut = { authViewModel.signOut() }
             )
         }

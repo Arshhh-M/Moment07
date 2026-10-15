@@ -7,15 +7,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +54,7 @@ fun ChatDetailScreen(
 
     var messageText by remember { mutableStateOf("") }
     var showE2EEDialog by remember { mutableStateOf(false) }
+    var showAboutAccountDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -85,7 +86,10 @@ fun ChatDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { showAboutAccountDialog = true }
+                    ) {
                         Box(modifier = Modifier.size(40.dp)) {
                             val photo = if (recipient.photoUrl.isNotBlank()) recipient.photoUrl
                             else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
@@ -112,17 +116,26 @@ fun ChatDetailScreen(
                         Spacer(modifier = Modifier.width(10.dp))
 
                         Column {
-                            Text(
-                                text = recipient.displayName.ifBlank { recipient.username },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = recipient.displayName.ifBlank { recipient.username },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Verified",
+                                    tint = PrimaryViolet,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                             if (isRecipientTyping) {
                                 Text(
-                                    text = "Typing...",
+                                    text = "Typing......",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.ExtraBold,
                                     fontSize = 11.sp
                                 )
                             } else {
@@ -145,6 +158,16 @@ fun ChatDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showAboutAccountDialog = true },
+                        modifier = Modifier.testTag("chat_about_account_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "About this account",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(
                         onClick = { showE2EEDialog = true },
                         modifier = Modifier.testTag("chat_encryption_info_button")
@@ -205,12 +228,39 @@ fun ChatDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(messages, key = { it.id }) { msg ->
+                itemsIndexed(messages, key = { _, it -> it.id }) { index, msg ->
                     val isMine = msg.senderId == currentUser.id
-                    MessageBubble(
-                        message = msg,
-                        isMine = isMine
-                    )
+                    Column {
+                        MessageBubble(
+                            message = msg,
+                            isMine = isMine
+                        )
+                        // "Seen just now" indicator under the latest sent message
+                        if (isMine && index == messages.lastIndex) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 3.dp, end = 6.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DoneAll,
+                                    contentDescription = "Seen",
+                                    tint = PrimaryViolet,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "Seen just now",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (isRecipientTyping) {
@@ -221,14 +271,21 @@ fun ChatDetailScreen(
                             modifier = Modifier.padding(vertical = 4.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "@${recipient.username} is typing...",
+                                    text = "@${recipient.username} is typing",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "......",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Black
                                 )
                             }
                         }
@@ -288,6 +345,13 @@ fun ChatDetailScreen(
             currentUser = currentUser,
             recipient = recipient,
             onDismiss = { showE2EEDialog = false }
+        )
+    }
+
+    if (showAboutAccountDialog) {
+        AboutAccountDialog(
+            user = recipient,
+            onDismiss = { showAboutAccountDialog = false }
         )
     }
 }
@@ -464,3 +528,128 @@ fun EncryptionVerificationDialog(
         }
     )
 }
+
+@Composable
+fun AboutAccountDialog(
+    user: UserProfile,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = "About this account",
+                tint = PrimaryViolet,
+                modifier = Modifier.size(36.dp)
+            )
+        },
+        title = {
+            Text("About this account", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // User banner
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val photo = if (user.photoUrl.isNotBlank()) user.photoUrl
+                    else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = user.username,
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = user.displayName.ifBlank { user.username },
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Verified,
+                                contentDescription = "Verified",
+                                tint = PrimaryViolet,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = "@${user.username}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                // Detail Items
+                AccountDetailRow(
+                    icon = Icons.Default.CalendarToday,
+                    title = "Date joined",
+                    subtitle = "October 2024 (Active member)"
+                )
+                AccountDetailRow(
+                    icon = Icons.Default.Public,
+                    title = "Account based in",
+                    subtitle = "India / Global"
+                )
+                AccountDetailRow(
+                    icon = Icons.Default.Badge,
+                    title = "Former usernames",
+                    subtitle = "0 (Original handle preserved)"
+                )
+                AccountDetailRow(
+                    icon = Icons.Default.Lock,
+                    title = "End-to-End Encryption",
+                    subtitle = "Active (AES-256 GCM cryptographically secured)"
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+fun AccountDetailRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = PrimaryViolet,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+

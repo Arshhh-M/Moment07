@@ -189,16 +189,23 @@ object MusicCatalog {
         )
     )
 
-    /**
-     * Searches the 1 Million+ Song library by query keyword and genre.
-     * Generates rich matching tracks for any artist or track name typed by user.
-     */
+    private val _uploadedSongs = mutableListOf<Song>()
+    val uploadedSongs: List<Song> get() = _uploadedSongs.toList()
+
+    fun addCustomSong(song: Song) {
+        if (!_uploadedSongs.any { it.id == song.id }) {
+            _uploadedSongs.add(0, song)
+        }
+    }
+
     fun searchSongs(query: String, genre: String = "All"): List<Song> {
         val cleanQuery = query.trim().lowercase()
+        val allAvailable = _uploadedSongs + TRENDING_SONGS
+
         val baseList = if (genre == "All") {
-            TRENDING_SONGS
+            allAvailable
         } else {
-            TRENDING_SONGS.filter { it.genre.equals(genre, ignoreCase = true) }
+            allAvailable.filter { it.genre.equals(genre, ignoreCase = true) }
         }
 
         if (cleanQuery.isBlank()) {
@@ -263,3 +270,4 @@ object MusicCatalog {
         return generatedVariations
     }
 }
+

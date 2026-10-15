@@ -1,11 +1,16 @@
 package com.example.ui.create
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -39,7 +45,6 @@ fun CreateModal(
 ) {
     var selectedType by remember { mutableStateOf("post") } // "post", "reel", "story"
     var caption by remember { mutableStateOf("") }
-    var customMediaUrl by remember { mutableStateOf("") }
     var selectedSong by remember { mutableStateOf<Song?>(null) }
     var isPickingSong by remember { mutableStateOf(false) }
 
@@ -57,17 +62,29 @@ fun CreateModal(
         "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&fit=crop"  // city skyline
     )
 
-    var selectedMedia by remember { mutableStateOf(presetImages[0]) }
+    var selectedMediaUri by remember { mutableStateOf<String?>(null) }
+    var fallbackMedia by remember { mutableStateOf(presetImages[0]) }
+
+    // Official Android Photo and Video Picker (No URL input needed!)
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedMediaUri = uri.toString()
+        }
+    }
+
+    val activeMedia = selectedMediaUri ?: fallbackMedia
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        modifier = Modifier.fillMaxHeight(0.9f)
+        modifier = Modifier.fillMaxHeight(0.92f)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(horizontal = 20.dp, vertical = 6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -75,7 +92,7 @@ fun CreateModal(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Create on SocialX",
+                    text = "New ${when (selectedType) { "reel" -> "Reel"; "story" -> "Story"; else -> "Post" }}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -84,7 +101,7 @@ fun CreateModal(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Selector Tabs: Post, Reel, Story
             Row(
@@ -108,10 +125,8 @@ fun CreateModal(
                             .weight(1f)
                             .clickable {
                                 selectedType = type
-                                if (type == "reel") {
-                                    selectedMedia = presetReels[0]
-                                } else {
-                                    selectedMedia = presetImages[0]
+                                if (selectedMediaUri == null) {
+                                    fallbackMedia = if (type == "reel") presetReels[0] else presetImages[0]
                                 }
                             }
                     ) {
@@ -138,63 +153,72 @@ fun CreateModal(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Caption input
-            OutlinedTextField(
-                value = caption,
-                onValueChange = { caption = it },
-                label = {
-                    Text(
-                        when (selectedType) {
-                            "reel" -> "Reel caption (use #hashtags and @mentions)..."
-                            "story" -> "Story text overlay..."
-                            else -> "What's on your mind? #tag @mention..."
-                        }
-                    )
+            // Primary Gallery Picker Button (Opens device gallery directly)
+            Button(
+                onClick = {
+                    val mediaType = if (selectedType == "reel") {
+                        ActivityResultContracts.PickVisualMedia.VideoOnly
+                    } else {
+                        ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    }
+                    mediaPickerLauncher.launch(PickVisualMediaRequest(mediaType))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("create_caption_input"),
+                    .height(50.dp)
+                    .testTag("open_gallery_picker_button"),
                 shape = RoundedCornerShape(14.dp),
-                maxLines = 4
-            )
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Icon(
+                    imageVector = if (selectedType == "reel") Icons.Default.VideoLibrary else Icons.Default.PhotoLibrary,
+                    contentDescription = "Gallery"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (selectedMediaUri != null) "Change Photo/Video from Gallery" else "Choose from Gallery",
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // Quick Samples Bar
             Text(
-                text = "Select Media:",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+                text = "Or choose sample preset:",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Presets carousel
+            Spacer(modifier = Modifier.height(6.dp))
             val mediaList = if (selectedType == "reel") presetReels else presetImages
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(mediaList) { url ->
-                    val isPicked = selectedMedia == url && customMediaUrl.isBlank()
+                    val isPicked = activeMedia == url
                     Box(
                         modifier = Modifier
-                            .size(if (selectedType == "reel") 75.dp else 70.dp)
+                            .size(54.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .border(
-                                width = if (isPicked) 3.dp else 1.dp,
+                                width = if (isPicked) 2.5.dp else 1.dp,
                                 color = if (isPicked) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(10.dp)
                             )
                             .clickable {
-                                selectedMedia = url
-                                customMediaUrl = ""
+                                selectedMediaUri = null
+                                fallbackMedia = url
                             }
                     ) {
                         AsyncImage(
                             model = url,
-                            contentDescription = "Media option",
+                            contentDescription = "Media preset",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -204,69 +228,160 @@ fun CreateModal(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Custom media URL option
+            // Caption input
             OutlinedTextField(
-                value = customMediaUrl,
-                onValueChange = { customMediaUrl = it },
-                label = { Text("Or enter custom image/video URL (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Preview box
-            val currentMedia = customMediaUrl.ifBlank { selectedMedia }
-            Card(
+                value = caption,
+                onValueChange = { caption = it },
+                label = {
+                    Text(
+                        when (selectedType) {
+                            "reel" -> "Write a caption #hashtags @mention..."
+                            "story" -> "Add text for your story..."
+                            else -> "What's on your mind? #tag @mention..."
+                        }
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                    .testTag("create_caption_input"),
+                shape = RoundedCornerShape(14.dp),
+                maxLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Attached Music Badge / Button
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isPickingSong = true }
+                    .testTag("create_add_music_button")
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = currentMedia,
-                        contentDescription = "Preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(4.dp),
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(PrimaryViolet, SecondaryPink))),
+                        contentAlignment = Alignment.Center
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = "Music",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "PREVIEW",
-                            color = Color.White,
-                            fontSize = 10.sp,
+                            text = if (selectedSong != null) selectedSong!!.title else "Add Music (1M+ Songs & Uploads)",
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = if (selectedSong != null) "${selectedSong!!.artist} • ${selectedSong!!.genre}" else "Spotify hits, Bollywood, Lo-Fi, or your own audio",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (selectedSong != null) {
+                        IconButton(onClick = { selectedSong = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove music")
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Select song",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Submit Button
+            // Media Preview Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = activeMedia,
+                        contentDescription = "Preview",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = if (selectedMediaUri != null) "Selected from Gallery ✓" else "Sample Preview",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    if (selectedSong != null) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MusicNote,
+                                    contentDescription = null,
+                                    tint = SecondaryPink,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${selectedSong!!.title} • ${selectedSong!!.artist}",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Share / Publish Button
             Button(
                 onClick = {
-                    val finalMedia = customMediaUrl.ifBlank { selectedMedia }
-                    val hashtags = Regex("#([a-zA-Z0-9_]+)").findAll(caption).map { it.groupValues[1] }.toList()
-                    val mentions = Regex("@([a-zA-Z0-9_]+)").findAll(caption).map { it.groupValues[1] }.toList()
-
+                    val mediaToUse = activeMedia
                     if (selectedType == "story") {
                         val story = Story(
                             authorId = currentUser.id,
                             authorUsername = currentUser.username,
-                            authorDisplayName = currentUser.displayName,
                             authorPhotoUrl = currentUser.photoUrl,
-                            mediaUrl = finalMedia,
+                            mediaUrl = mediaToUse,
                             caption = caption.trim(),
-                            mentions = mentions
+                            songTitle = selectedSong?.title ?: "",
+                            songArtist = selectedSong?.artist ?: "",
+                            songCoverUrl = selectedSong?.coverUrl ?: ""
                         )
                         onCreateStory(story)
                     } else {
@@ -277,10 +392,10 @@ fun CreateModal(
                             authorPhotoUrl = currentUser.photoUrl,
                             type = selectedType,
                             caption = caption.trim(),
-                            mediaUrl = finalMedia,
-                            mediaType = if (selectedType == "reel") "video" else "image",
-                            hashtags = hashtags,
-                            mentions = mentions
+                            mediaUrl = mediaToUse,
+                            songTitle = selectedSong?.title ?: "",
+                            songArtist = selectedSong?.artist ?: "",
+                            songCoverUrl = selectedSong?.coverUrl ?: ""
                         )
                         onCreatePost(post)
                     }
@@ -289,31 +404,29 @@ fun CreateModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .testTag("publish_content_button"),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedType == "reel") SecondaryPink else MaterialTheme.colorScheme.primary
-                )
+                    .testTag("publish_post_button"),
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(
-                    imageVector = when (selectedType) {
-                        "reel" -> Icons.Default.Movie
-                        "story" -> Icons.Default.AddCircle
-                        else -> Icons.Default.Send
-                    },
-                    contentDescription = "Publish"
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = when (selectedType) {
                         "reel" -> "Share Reel"
-                        "story" -> "Share to Story"
-                        else -> "Publish Post"
+                        "story" -> "Share to Your Story"
+                        else -> "Share Post"
                     },
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
             }
         }
+    }
+
+    if (isPickingSong) {
+        SongPickerModal(
+            onDismiss = { isPickingSong = false },
+            onSongSelected = { song ->
+                selectedSong = song
+                isPickingSong = false
+            }
+        )
     }
 }
