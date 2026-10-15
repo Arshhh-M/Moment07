@@ -1,0 +1,78 @@
+{
+  "users": [
+    {
+      "id": "user_official",
+      "username": "socialx",
+      "displayName": "SocialX Official",
+      "email": "official@socialx.app",
+      "bio": "Welcome to SocialX! Moments, Reels, Stories & 1M+ Songs ✨",
+      "photoUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop",
+      "passwordHash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+      "passwordSalt": "defaultsalt123",
+      "followersCount": 124,
+      "followingCount": 12,
+      "savedPostIds": []
+    },
+    {
+      "id": "user_1791996069043",
+      "username": "arshhh_.70",
+      "displayName": "Arsh",
+      "email": "arshmishra2304@gmail.com",
+      "bio": "Hey there! I am using SocialX ✨",
+      "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop",
+      "passwordHash": "be6d1a34858876b1dccd428d1d593634d93f2d956ee967e4674e236f013c0034",
+      "passwordSalt": "d40689bd6a4d86d2365aab72",
+      "followersCount": 0,
+      "followingCount": 0,
+      "savedPostIds": []
+    }
+  ],
+  "posts": [
+    {
+      "id": "post_welcome",
+      "authorId": "user_official",
+      "authorUsername": "socialx",
+      "authorDisplayName": "SocialX Official",
+      "authorPhotoUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop",
+      "type": "post",
+      "caption": "Welcome to the all-new SocialX Web App! 🚀 End-to-End Encrypted messaging, 1,000,000+ tracks for Stories, Reels, Posts & Notes! ✨",
+      "mediaUrl": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&fit=crop",
+      "songTitle": "Espresso",
+      "songArtist": "Sabrina Carpenter",
+      "songCoverUrl": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&fit=crop",
+      "likesCount": 18,
+      "likedBy": [],
+      "commentsCount": 2,
+      "repostsCount": 4,
+      "createdAt": "2026-10-14T16:16:33.714Z"
+    }
+  ],
+  "stories": [
+    {
+      "id": "story_1",
+      "authorId": "user_official",
+      "authorUsername": "socialx",
+      "authorDisplayName": "SocialX Official",
+      "authorPhotoUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop",
+      "mediaUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&fit=crop",
+      "songTitle": "Kesariya",
+      "songArtist": "Arijit Singh",
+      "createdAt": "2026-10-14T16:16:33.714Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_welcome",
+      "userId": "user_official",
+      "username": "socialx",
+      "displayName": "SocialX Official",
+      "userPhotoUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop",
+      "text": "Vibing to 1M+ music tracks 🎶",
+      "songTitle": "Blinding Lights",
+      "songArtist": "The Weeknd",
+      "createdAt": "2026-10-14T16:16:33.714Z"
+    }
+  ],
+  "conversations": [],
+  "messages": {}
+}
