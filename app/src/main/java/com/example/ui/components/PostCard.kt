@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -221,7 +222,7 @@ fun PostCard(
                                     title = post.songTitle,
                                     artist = post.songArtist,
                                     coverUrl = post.songCoverUrl.ifBlank { post.mediaUrl },
-                                    audioUrl = ""
+                                    audioUrl = post.songAudioUrl
                                 )
                             )
                         }
@@ -249,20 +250,105 @@ fun PostCard(
                 }
             }
 
-            // Media thumbnail/image
+            // Media thumbnail/image with Instagram Filter & Overlays
             if (post.mediaUrl.isNotBlank()) {
+                val filter = InstagramFilters.getFilter(post.filterName)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(if (post.type == "reel") 360.dp else 260.dp)
+                        .height(if (post.type == "reel") 360.dp else 280.dp)
                         .background(Color.Black)
                 ) {
                     AsyncImage(
                         model = post.mediaUrl,
                         contentDescription = "Post Media",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        colorFilter = ColorFilter.colorMatrix(filter.colorMatrix)
                     )
+
+                    // Location tag overlay
+                    if (post.locationTag.isNotBlank()) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.65f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = post.locationTag,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    // Instagram Filter badge
+                    if (post.filterName != "Normal") {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.55f),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = "✨ ${post.filterName}",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Text overlay on post
+                    if (post.textOverlay.isNotBlank()) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = post.textOverlay,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+
+                    // Stickers row
+                    if (post.stickers.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            post.stickers.take(3).forEach { s ->
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = s,
+                                        color = Color.Black,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     if (post.type == "reel") {
                         Surface(
                             color = Color.Black.copy(alpha = 0.5f),

@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.ColorFilter
+import com.example.ui.components.InstagramFilters
 import com.example.data.model.Post
 import com.example.data.model.Song
 import com.example.data.model.Story
@@ -47,6 +49,13 @@ fun CreateModal(
     var caption by remember { mutableStateOf("") }
     var selectedSong by remember { mutableStateOf<Song?>(null) }
     var isPickingSong by remember { mutableStateOf(false) }
+
+    var isInstagramEditorOpen by remember { mutableStateOf(false) }
+    var appliedFilter by remember { mutableStateOf("Normal") }
+    var appliedLocation by remember { mutableStateOf("") }
+    var appliedStickers by remember { mutableStateOf(listOf<String>()) }
+    var appliedTextOverlay by remember { mutableStateOf("") }
+    var appliedAspectRatio by remember { mutableStateOf("original") }
 
     val presetImages = listOf(
         "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&fit=crop", // abstract violet
@@ -326,6 +335,40 @@ fun CreateModal(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Instagram Edits Button
+            Button(
+                onClick = { isInstagramEditorOpen = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .testTag("open_instagram_editor_button"),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1E1E24),
+                    contentColor = Color.White
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Brush.linearGradient(listOf(PrimaryViolet, SecondaryPink)))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = SecondaryPink,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (appliedFilter != "Normal" || appliedLocation.isNotBlank() || appliedStickers.isNotEmpty() || appliedTextOverlay.isNotBlank()) {
+                        "✨ Filter: $appliedFilter ${if (appliedLocation.isNotBlank()) "• $appliedLocation" else ""} (${appliedStickers.size} stickers)"
+                    } else {
+                        "✨ Edit Media (Instagram Style: Filters, Stickers, Text)"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             // Media Preview Card
             Card(
                 modifier = Modifier
@@ -338,23 +381,80 @@ fun CreateModal(
                         model = activeMedia,
                         contentDescription = "Preview",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        colorFilter = ColorFilter.colorMatrix(InstagramFilters.getFilter(appliedFilter).colorMatrix)
                     )
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(6.dp),
+
+                    // Top badges
+                    Row(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(8.dp)
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = if (selectedMediaUri != null) "Selected from Gallery ✓" else "Sample Preview",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.65f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (selectedMediaUri != null) "Gallery ✓" else "Sample Preview",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        if (appliedFilter != "Normal") {
+                            Surface(
+                                color = PrimaryViolet.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "✨ $appliedFilter",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        if (appliedLocation.isNotBlank()) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.7f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = appliedLocation,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
+
+                    // Text overlay preview
+                    if (appliedTextOverlay.isNotBlank()) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = appliedTextOverlay,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
                     if (selectedSong != null) {
                         Surface(
                             color = Color.Black.copy(alpha = 0.7f),
@@ -396,12 +496,19 @@ fun CreateModal(
                         val story = Story(
                             authorId = currentUser.id,
                             authorUsername = currentUser.username,
+                            authorDisplayName = currentUser.displayName,
                             authorPhotoUrl = currentUser.photoUrl,
                             mediaUrl = mediaToUse,
                             caption = caption.trim(),
                             songTitle = selectedSong?.title ?: "",
                             songArtist = selectedSong?.artist ?: "",
-                            songCoverUrl = selectedSong?.coverUrl ?: ""
+                            songCoverUrl = selectedSong?.coverUrl ?: "",
+                            songAudioUrl = selectedSong?.audioUrl ?: "",
+                            filterName = appliedFilter,
+                            locationTag = appliedLocation,
+                            stickers = appliedStickers,
+                            textOverlay = appliedTextOverlay,
+                            aspectRatio = appliedAspectRatio
                         )
                         onCreateStory(story)
                     } else {
@@ -415,7 +522,13 @@ fun CreateModal(
                             mediaUrl = mediaToUse,
                             songTitle = selectedSong?.title ?: "",
                             songArtist = selectedSong?.artist ?: "",
-                            songCoverUrl = selectedSong?.coverUrl ?: ""
+                            songCoverUrl = selectedSong?.coverUrl ?: "",
+                            songAudioUrl = selectedSong?.audioUrl ?: "",
+                            filterName = appliedFilter,
+                            locationTag = appliedLocation,
+                            stickers = appliedStickers,
+                            textOverlay = appliedTextOverlay,
+                            aspectRatio = appliedAspectRatio
                         )
                         onCreatePost(post)
                     }
@@ -446,6 +559,26 @@ fun CreateModal(
             onSongSelected = { song ->
                 selectedSong = song
                 isPickingSong = false
+            }
+        )
+    }
+
+    if (isInstagramEditorOpen) {
+        InstagramMediaEditorModal(
+            mediaUrl = activeMedia,
+            initialFilter = appliedFilter,
+            initialLocation = appliedLocation,
+            initialStickers = appliedStickers,
+            initialTextOverlay = appliedTextOverlay,
+            initialAspectRatio = appliedAspectRatio,
+            attachedSong = selectedSong,
+            onDismiss = { isInstagramEditorOpen = false },
+            onApplyEdits = { filterName, locationTag, stickers, textOverlay, aspectRatio ->
+                appliedFilter = filterName
+                appliedLocation = locationTag
+                appliedStickers = stickers
+                appliedTextOverlay = textOverlay
+                appliedAspectRatio = aspectRatio
             }
         )
     }

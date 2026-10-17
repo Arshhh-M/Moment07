@@ -67,14 +67,20 @@ object AudioPlayerManager {
         _playbackProgress.value = 0f
         _isPlaying.value = true
 
-        val hasValidUrl = song.audioUrl.isNotBlank() && (
-            song.audioUrl.startsWith("http://") ||
-            song.audioUrl.startsWith("https://") ||
-            song.audioUrl.startsWith("content://") ||
-            song.audioUrl.startsWith("file://")
-        )
+        val effectiveAudioUrl = MusicCatalog.getAudioUrlForSong(song)
 
-        if (hasValidUrl) {
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            audioManager?.let { am ->
+                val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                val cur = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                if (cur < (max * 0.65f).toInt()) {
+                    am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, (max * 0.85f).toInt().coerceAtLeast(1), 0)
+                }
+            }
+        } catch (_: Exception) {}
+
+        if (effectiveAudioUrl.isNotBlank()) {
             try {
                 mediaPlayer = MediaPlayer().apply {
                     setAudioAttributes(
@@ -83,12 +89,14 @@ object AudioPlayerManager {
                             .setUsage(AudioAttributes.USAGE_MEDIA)
                             .build()
                     )
-                    if (song.audioUrl.startsWith("content://")) {
-                        setDataSource(context, Uri.parse(song.audioUrl))
+                    setVolume(1.0f, 1.0f)
+                    if (effectiveAudioUrl.startsWith("content://")) {
+                        setDataSource(context, Uri.parse(effectiveAudioUrl))
                     } else {
-                        setDataSource(song.audioUrl)
+                        setDataSource(effectiveAudioUrl)
                     }
                     setOnPreparedListener { mp ->
+                        mp.setVolume(1.0f, 1.0f)
                         mp.start()
                         _isPlaying.value = true
                         _totalDurationSeconds.value = (mp.duration / 1000).coerceAtLeast(1)
@@ -98,7 +106,7 @@ object AudioPlayerManager {
                         playNext(context)
                     }
                     setOnErrorListener { _, what, extra ->
-                        Log.w(TAG, "MediaPlayer error ($what, $extra), switching to high-fidelity audio synthesizer")
+                        Log.w(TAG, "MediaPlayer stream error ($what, $extra), switching to synthesizer")
                         playMelodicSynth(song)
                         true
                     }
