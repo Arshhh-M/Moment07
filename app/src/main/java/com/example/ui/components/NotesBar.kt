@@ -259,13 +259,13 @@ fun EditNoteDialog(
 
                 OutlinedTextField(
                     value = noteText,
-                    onValueChange = { if (it.length <= 60) noteText = it },
-                    placeholder = { Text("What's on your mind? (60 max)") },
+                    onValueChange = { if (it.length <= 240) noteText = it },
+                    placeholder = { Text("What's on your mind? (240 letters max)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    maxLines = 2,
+                    maxLines = 4,
                     supportingText = {
-                        Text("${noteText.length}/60", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                        Text("${noteText.length}/240", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                     }
                 )
 

@@ -32,6 +32,7 @@ import com.example.data.crypto.E2EEncryptionHelper
 import com.example.data.model.ChatMessage
 import com.example.data.model.UserProfile
 import com.example.ui.components.formatTimestamp
+import com.example.ui.components.formatDetailedRelativeTime
 import com.example.ui.theme.OnlineGreen
 import com.example.ui.theme.PrimaryViolet
 import kotlinx.coroutines.delay
@@ -235,8 +236,10 @@ fun ChatDetailScreen(
                             message = msg,
                             isMine = isMine
                         )
-                        // "Seen just now" indicator under the latest sent message
+                        // "Seen / Sent" indicator under the latest sent message
                         if (isMine && index == messages.lastIndex) {
+                            val isSeen = msg.status == "read"
+                            val statusLabel = formatDetailedRelativeTime(msg.createdAt?.toDate(), if (isSeen) "Seen" else "Sent")
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -245,14 +248,14 @@ fun ChatDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.DoneAll,
-                                    contentDescription = "Seen",
-                                    tint = PrimaryViolet,
+                                    imageVector = if (isSeen) Icons.Default.DoneAll else Icons.Default.Check,
+                                    contentDescription = "Status",
+                                    tint = if (isSeen) PrimaryViolet else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     modifier = Modifier.size(13.dp)
                                 )
                                 Spacer(modifier = Modifier.width(3.dp))
                                 Text(
-                                    text = "Seen just now",
+                                    text = statusLabel,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp,

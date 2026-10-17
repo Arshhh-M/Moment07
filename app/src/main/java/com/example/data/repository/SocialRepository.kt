@@ -707,13 +707,15 @@ class SocialRepository(private val db: FirebaseFirestore) {
             )
             msgRef.set(msg).await()
 
-            // Update conversation snippet and clear typing state
+            // Update conversation snippet, unread counter, and clear typing state
             convRef.update(
                 mapOf(
                     "lastMessage" to if (sharedPostId != null) "Shared a post" else text.take(60),
                     "lastMessageSenderId" to sender.id,
                     "lastMessageTimestamp" to FieldValue.serverTimestamp(),
-                    "typingUserIds" to FieldValue.arrayRemove(sender.id)
+                    "typingUserIds" to FieldValue.arrayRemove(sender.id),
+                    "readBy" to listOf(sender.id),
+                    "unreadCount" to FieldValue.increment(1)
                 )
             ).await()
             true
@@ -739,20 +741,56 @@ class SocialRepository(private val db: FirebaseFirestore) {
 
     suspend fun markConversationRead(conversationId: String, currentUserId: String) {
         try {
-            val unreadQuery = db.collection("conversations").document(conversationId)
+            val convRef = db.collection("conversations").document(conversationId)
+            convRef.update(
+                mapOf(
+                    "readBy" to FieldValue.arrayUnion(currentUserId),
+                    "unreadCount" to 0
+                )
+            ).await()
+
+            val unreadQuery = convRef
                 .collection("messages")
                 .whereEqualTo("recipientId", currentUserId)
                 .whereEqualTo("status", "sent")
                 .limit(20)
                 .get().await()
 
-            val batch = db.batch()
-            for (doc in unreadQuery.documents) {
-                batch.update(doc.reference, "status", "read")
+            if (!unreadQuery.isEmpty) {
+                val batch = db.batch()
+                for (doc in unreadQuery.documents) {
+                    batch.update(doc.reference, "status", "read")
+                }
+                batch.commit().await()
             }
-            batch.commit().await()
         } catch (e: Exception) {
             Log.w(TAG, "Error marking messages read", e)
+        }
+    }
+
+    suspend fun updateUsername(userId: String, oldUsername: String, newUsername: String): Result<Unit> {
+        val cleanNew = newUsername.trim().lowercase().removePrefix("@")
+        val cleanOld = oldUsername.trim().lowercase().removePrefix("@")
+        if (cleanNew.length < 2) return Result.failure(IllegalArgumentException("Username must be at least 2 characters"))
+        if (cleanNew == cleanOld) return Result.success(Unit)
+
+        return try {
+            val isAvail = isUsernameAvailable(cleanNew, userId)
+            if (!isAvail) return Result.failure(IllegalStateException("Username @$cleanNew is already taken"))
+
+            val batch = db.batch()
+            if (cleanOld.isNotBlank()) {
+                batch.delete(db.collection("usernames").document(cleanOld))
+            }
+            batch.set(
+                db.collection("usernames").document(cleanNew),
+                mapOf("userId" to userId, "username" to cleanNew, "createdAt" to FieldValue.serverTimestamp())
+            )
+            batch.update(db.collection("users").document(userId), "username", cleanNew)
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

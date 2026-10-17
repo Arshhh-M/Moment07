@@ -24,6 +24,15 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Deep link to open post/reel links from other apps -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="socialx.app" android:pathPrefix="/p" />
+                <data android:scheme="socialx" android:host="post" />
+            </intent-filter>
         </activity>
     </application>
 

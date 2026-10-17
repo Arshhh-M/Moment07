@@ -192,9 +192,10 @@ class SocialViewModel(
         }
     }
 
-    fun updateProfile(displayName: String, bio: String, photoUrl: String) {
+    fun updateProfile(displayName: String, bio: String, photoUrl: String, newUsername: String = "") {
         val user = currentUserProfile.value ?: return
-        val updated = user.copy(displayName = displayName, bio = bio, photoUrl = photoUrl)
+        val cleanUsername = if (newUsername.isNotBlank()) newUsername.trim().lowercase().removePrefix("@") else user.username
+        val updated = user.copy(displayName = displayName.trim(), bio = bio.trim(), photoUrl = photoUrl, username = cleanUsername)
         viewModelScope.launch {
             repository.saveUserProfile(updated)
         }
@@ -306,5 +307,10 @@ class SocialViewModel(
         viewModelScope.launch {
             repository.deleteHighlight(currentUserId, highlightId)
         }
+    }
+
+    suspend fun updateUsername(newUsername: String): Result<Unit> {
+        val user = currentUserProfile.value ?: return Result.failure(IllegalStateException("Not authenticated"))
+        return repository.updateUsername(user.id, user.username, newUsername)
     }
 }

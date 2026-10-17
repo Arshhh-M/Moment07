@@ -133,6 +133,8 @@ data class Conversation(
     val lastMessageSenderId: String = "",
     @ServerTimestamp val lastMessageTimestamp: Timestamp? = null,
     val typingUserIds: List<String> = emptyList(),
+    val readBy: List<String> = emptyList(),
+    val unreadCount: Long = 0L,
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
 )

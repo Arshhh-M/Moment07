@@ -123,7 +123,7 @@ fun SocialApp(
                 activeChatRecipient = other
                 viewModel.setActiveConversation(convId)
             },
-            onUpdateProfile = { _, _, _ -> },
+            onUpdateProfile = { _, _, _, _ -> },
             onSignOut = onSignOut,
             onPostClick = {},
             onViewHighlight = { hl ->
@@ -327,8 +327,8 @@ fun SocialApp(
                         isFollowing = false,
                         onToggleFollow = {},
                         onSendMessage = {},
-                        onUpdateProfile = { name, bio, photo ->
-                            viewModel.updateProfile(name, bio, photo)
+                        onUpdateProfile = { name, bio, photo, newUsername ->
+                            viewModel.updateProfile(name, bio, photo, newUsername)
                         },
                         onSignOut = onSignOut,
                         onPostClick = {},

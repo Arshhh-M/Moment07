@@ -24,6 +24,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.audio.AudioPlayerManager
 import com.example.data.model.Comment
 import com.example.data.model.Post
 import com.example.data.model.Song
@@ -68,6 +71,9 @@ fun HomeScreen(
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = For You, 1 = Following
     var activeCommentPost by remember { mutableStateOf<Post?>(null) }
     var activeRepostPost by remember { mutableStateOf<Post?>(null) }
+    val listState = rememberLazyListState()
+    val context = LocalContext.current
+    var isBrowsingMusicModalOpen by remember { mutableStateOf(false) }
 
     val filteredPosts = remember(posts, selectedTab, followingIds) {
         if (selectedTab == 1) {
@@ -75,6 +81,35 @@ fun HomeScreen(
         } else {
             posts
         }
+    }
+
+    // Automatic music playback synchronization across the app's feed:
+    // When user scrolls through the feed, smoothly transition track context to the visible post's song
+    LaunchedEffect(listState, filteredPosts) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { firstIndex ->
+                // Stories is index 0, TabRow is index 1, Posts start at index 2
+                val postIndex = firstIndex - 2
+                if (postIndex in filteredPosts.indices) {
+                    val currentPost = filteredPosts[postIndex]
+                    if (currentPost.songTitle.isNotBlank()) {
+                        val activeSong = AudioPlayerManager.currentPlayingSong.value
+                        val postSongId = "post_${currentPost.id}"
+                        // If already playing audio, smoothly transition context without interrupting rhythm
+                        if (activeSong != null && activeSong.id != postSongId && AudioPlayerManager.isPlaying.value) {
+                            AudioPlayerManager.playSong(
+                                context,
+                                Song(
+                                    id = postSongId,
+                                    title = currentPost.songTitle,
+                                    artist = currentPost.songArtist,
+                                    coverUrl = currentPost.songCoverUrl.ifBlank { currentPost.mediaUrl }
+                                )
+                            )
+                        }
+                    }
+                }
+            }
     }
 
     Scaffold(
@@ -161,99 +196,123 @@ fun HomeScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Stories Row
-            item {
-                StoryBar(
-                    stories = stories,
-                    currentUser = currentUser,
-                    onAddStoryClick = onAddStoryClick,
-                    onStoryClick = onStoryClick
-                )
-                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            }
-
-            // Feed Tabs (For You vs Following)
-            item {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    divider = {}
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = {
-                            Text(
-                                text = "For You",
-                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = {
-                            Text(
-                                text = "Following (${followingIds.size})",
-                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-
-            // Empty state
-            if (filteredPosts.isEmpty()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 76.dp)
+            ) {
+                // Stories Row
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(280.dp),
-                        contentAlignment = Alignment.Center
+                    StoryBar(
+                        stories = stories,
+                        currentUser = currentUser,
+                        onAddStoryClick = onAddStoryClick,
+                        onStoryClick = onStoryClick
+                    )
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                }
+
+                // Feed Tabs (For You vs Following)
+                item {
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        divider = {}
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = if (selectedTab == 1) "No posts from accounts you follow yet." else "No posts yet. Be the first to share!",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = onAddStoryClick) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Create")
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Create Post or Story")
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = {
+                                Text(
+                                    text = "For You",
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = {
+                                Text(
+                                    text = "Following (${followingIds.size})",
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                // Empty state
+                if (filteredPosts.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = if (selectedTab == 1) "No posts from accounts you follow yet." else "No posts yet. Be the first to share!",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(onClick = onAddStoryClick) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Create")
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Create Post or Story")
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                items(filteredPosts, key = { it.id }) { post ->
-                    val isLiked = userLikes.contains("${post.type}_${post.id}") || userLikes.contains("post_${post.id}")
-                    val isSaved = userSaves.contains(post.id)
+                } else {
+                    items(filteredPosts, key = { it.id }) { post ->
+                        val isLiked = userLikes.contains("${post.type}_${post.id}") || userLikes.contains("post_${post.id}")
+                        val isSaved = userSaves.contains(post.id)
 
-                    PostCard(
-                        post = post,
-                        currentUser = currentUser,
-                        isLiked = isLiked,
-                        isSaved = isSaved,
-                        onLikeClick = { onLikePost(post) },
-                        onCommentClick = { activeCommentPost = post },
-                        onRepostClick = { activeRepostPost = post },
-                        onShareClick = { onSharePostToDm(post) },
-                        onSaveClick = { onSavePost(post) },
-                        onUserClick = onUserClick,
-                        onDeleteClick = if (post.authorId == currentUser.id) { { onDeletePost(post) } } else null
-                    )
+                        PostCard(
+                            post = post,
+                            currentUser = currentUser,
+                            isLiked = isLiked,
+                            isSaved = isSaved,
+                            onLikeClick = { onLikePost(post) },
+                            onCommentClick = { activeCommentPost = post },
+                            onRepostClick = { activeRepostPost = post },
+                            onShareClick = { onSharePostToDm(post) },
+                            onSaveClick = { onSavePost(post) },
+                            onUserClick = onUserClick,
+                            onDeleteClick = if (post.authorId == currentUser.id) { { onDeletePost(post) } } else null
+                        )
+                    }
                 }
             }
+
+            // Docked Mini Music Player on Home Feed
+            MiniMusicPlayer(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp),
+                onOpenSongPicker = { isBrowsingMusicModalOpen = true }
+            )
         }
+    }
+
+    if (isBrowsingMusicModalOpen) {
+        SongPickerModal(
+            onDismiss = { isBrowsingMusicModalOpen = false },
+            onSongSelected = { song ->
+                AudioPlayerManager.playSong(context, song)
+                isBrowsingMusicModalOpen = false
+            }
+        )
     }
 
     // Comment Sheet Dialog

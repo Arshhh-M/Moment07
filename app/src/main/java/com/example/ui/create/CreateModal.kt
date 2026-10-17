@@ -188,40 +188,60 @@ fun CreateModal(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Quick Samples Bar
-            Text(
-                text = "Or choose sample preset:",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            val mediaList = if (selectedType == "reel") presetReels else presetImages
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(mediaList) { url ->
-                    val isPicked = activeMedia == url
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(
-                                width = if (isPicked) 2.5.dp else 1.dp,
-                                color = if (isPicked) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-                                selectedMediaUri = null
-                                fallbackMedia = url
-                            }
+            // Gallery selection status
+            if (selectedMediaUri != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = url,
-                            contentDescription = "Media preset",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Media selected from your Gallery ✓",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
+                    }
+                }
+            } else {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val mediaType = if (selectedType == "reel") {
+                                ActivityResultContracts.PickVisualMedia.VideoOnly
+                            } else {
+                                ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                            }
+                            mediaPickerLauncher.launch(PickVisualMediaRequest(mediaType))
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Select from Device Gallery",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = if (selectedType == "reel") "Choose your video file" else "Choose photos or videos",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

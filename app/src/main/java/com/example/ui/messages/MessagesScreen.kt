@@ -29,6 +29,7 @@ import com.example.data.model.UserNote
 import com.example.data.model.UserProfile
 import com.example.ui.components.NotesBar
 import com.example.ui.components.formatTimestamp
+import com.example.ui.components.formatDetailedRelativeTime
 import com.example.ui.theme.OnlineGreen
 import com.example.ui.theme.PrimaryViolet
 
@@ -70,19 +71,6 @@ fun MessagesScreen(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            color = PrimaryViolet,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = "4+ new messages",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
                     }
                 },
                 actions = {
@@ -208,6 +196,7 @@ fun MessagesScreen(
                         ConversationRow(
                             conversation = conv,
                             otherUser = otherProfile,
+                            currentUser = currentUser,
                             isTyping = isOtherTyping,
                             onClick = { onOpenConversation(conv.id, otherProfile) }
                         )
@@ -237,6 +226,7 @@ fun MessagesScreen(
 fun ConversationRow(
     conversation: Conversation,
     otherUser: UserProfile,
+    currentUser: UserProfile,
     isTyping: Boolean,
     onClick: () -> Unit
 ) {
@@ -307,6 +297,12 @@ fun ConversationRow(
                     )
                 }
             } else {
+                val isFromMe = conversation.lastMessageSenderId == currentUser.id
+                val isReadByMe = conversation.readBy.contains(currentUser.id)
+                val unreadIncomingCount = if (!isFromMe && !isReadByMe) {
+                    if (conversation.unreadCount > 0) conversation.unreadCount else 1L
+                } else 0L
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -319,32 +315,41 @@ fun ConversationRow(
                         Text(
                             text = conversation.lastMessage.ifBlank { "Started a chat" },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (unreadIncomingCount > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (unreadIncomingCount > 0) FontWeight.Bold else FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                        val statusAction = if (isFromMe) {
+                            val isSeenByOther = conversation.readBy.any { it != currentUser.id }
+                            if (isSeenByOther) "Seen" else "Sent"
+                        } else {
+                            "Sent"
+                        }
                         Text(
-                            text = "• Seen just now",
+                            text = "• ${formatDetailedRelativeTime(conversation.lastMessageTimestamp?.toDate(), statusAction)}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                             fontSize = 10.sp
                         )
                     }
 
-                    Surface(
-                        color = PrimaryViolet,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.padding(start = 6.dp)
-                    ) {
-                        Text(
-                            text = "4+ new",
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    if (unreadIncomingCount > 0) {
+                        Surface(
+                            color = PrimaryViolet,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.padding(start = 6.dp)
+                        ) {
+                            Text(
+                                text = "$unreadIncomingCount new",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }

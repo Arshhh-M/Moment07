@@ -401,3 +401,23 @@ fun formatTimestamp(date: Date?): String {
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
     }
 }
+
+fun formatDetailedRelativeTime(date: Date?, action: String = "Sent"): String {
+    if (date == null) return "$action just now"
+    val diffMs = (System.currentTimeMillis() - date.time).coerceAtLeast(0)
+    val diffSec = diffMs / 1000
+    val diffMin = diffSec / 60
+    val diffHour = diffMin / 60
+    val diffDay = diffHour / 24
+
+    val timeStr = when {
+        diffSec < 45 -> "just now"
+        diffMin < 60 -> "$diffMin ${if (diffMin == 1L) "minute" else "minutes"} ago"
+        diffHour < 24 -> "$diffHour ${if (diffHour == 1L) "hour" else "hours"} ago"
+        diffDay == 1L -> "yesterday"
+        diffDay < 7 -> "$diffDay days ago"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
+    }
+
+    return "$action $timeStr"
+}

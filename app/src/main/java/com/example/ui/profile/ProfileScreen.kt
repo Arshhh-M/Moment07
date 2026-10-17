@@ -51,7 +51,7 @@ fun ProfileScreen(
     isFollowing: Boolean,
     onToggleFollow: () -> Unit,
     onSendMessage: () -> Unit,
-    onUpdateProfile: (displayName: String, bio: String, photoUrl: String) -> Unit,
+    onUpdateProfile: (displayName: String, bio: String, photoUrl: String, newUsername: String) -> Unit = { _, _, _, _ -> },
     onSignOut: () -> Unit,
     onPostClick: (Post) -> Unit,
     onCreateHighlight: (title: String, coverUrl: String) -> Unit = { _, _ -> },
@@ -72,7 +72,7 @@ fun ProfileScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            onUpdateProfile(profileUser.displayName, profileUser.bio, uri.toString())
+            onUpdateProfile(profileUser.displayName, profileUser.bio, uri.toString(), profileUser.username)
         }
     }
 
@@ -343,12 +343,8 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Default & User Highlights
-                    val displayHighlights = if (highlights.isNotEmpty()) highlights else listOf(
-                        StoryHighlight(id = "h1", title = "Vibes ✨", coverUrl = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&fit=crop"),
-                        StoryHighlight(id = "h2", title = "Travel ✈️", coverUrl = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&fit=crop"),
-                        StoryHighlight(id = "h3", title = "Memories ❤️", coverUrl = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&fit=crop")
-                    )
+                    // User's Real Highlights only (No fake demo content)
+                    val displayHighlights = highlights
 
                     items(displayHighlights, key = { it.id }) { highlight ->
                         Column(
@@ -489,12 +485,13 @@ fun ProfileScreen(
     if (showEditDialog) {
         EditProfileDialog(
             currentName = profileUser.displayName,
+            currentUsername = profileUser.username,
             currentBio = profileUser.bio,
             currentPhoto = profileUser.photoUrl,
             onDismiss = { showEditDialog = false },
-            onSave = { name, bio, photo ->
+            onSave = { name, username, bio, photo ->
                 showEditDialog = false
-                onUpdateProfile(name, bio, photo)
+                onUpdateProfile(name, bio, photo, username)
             }
         )
     }
@@ -546,12 +543,14 @@ fun StatCounter(count: Long, label: String) {
 @Composable
 fun EditProfileDialog(
     currentName: String,
+    currentUsername: String = "",
     currentBio: String,
     currentPhoto: String,
     onDismiss: () -> Unit,
-    onSave: (displayName: String, bio: String, photoUrl: String) -> Unit
+    onSave: (displayName: String, username: String, bio: String, photoUrl: String) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
+    var username by remember { mutableStateOf(currentUsername) }
     var bio by remember { mutableStateOf(currentBio) }
     var photoUri by remember { mutableStateOf(currentPhoto) }
 
@@ -620,6 +619,16 @@ fun EditProfileDialog(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.lowercase() },
+                    label = { Text("Username") },
+                    prefix = { Text("@") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
                     value = bio,
                     onValueChange = { if (it.length <= 150) bio = it },
                     label = { Text("Bio") },
@@ -631,7 +640,7 @@ fun EditProfileDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(name, bio, photoUri) },
+                onClick = { onSave(name, username, bio, photoUri) },
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Save")
